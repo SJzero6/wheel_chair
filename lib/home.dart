@@ -40,14 +40,14 @@ class _Home_pageState extends State<Home_page> {
                               children: [
                                 _cardmenu(
                                     title: 'ALERT',
-                                    asset: 'assets/spo2.png',
+                                    asset:
+                                        'assets/warning-icon-transparent-free-png.webp',
                                     onTap: () {
                                       print('Alert');
                                     }),
                                 _cardmenu(
                                     title: 'SPO2',
-                                    asset:
-                                        'assets/warning-icon-transparent-free-png.webp',
+                                    asset: 'assets/spo2.png',
                                     onTap: () {
                                       print('O2 rate');
                                     },
