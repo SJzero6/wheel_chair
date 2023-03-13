@@ -1,6 +1,8 @@
+import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:speech_to_text/speech_to_text.dart' as spee;
 
 class Home_page extends StatefulWidget {
   const Home_page({super.key});
@@ -10,18 +12,57 @@ class Home_page extends StatefulWidget {
 }
 
 class _Home_pageState extends State<Home_page> {
-  bool _isvisible = true;
+  late spee.SpeechToText _speech;
+
+  bool enable = true;
+
+  bool islisten = false;
+
+  String textspeech = " speak";
+
+  void onlistening() async {
+    if (!islisten) {
+      bool available = await _speech.initialize(
+          onStatus: (val) => print("onstatus : $val"),
+          onError: (val) => print("onerror  : $val"));
+      if (available) {
+        setState(() {
+          islisten = true;
+        });
+        _speech.listen(
+            onResult: (val) => setState(() {
+                  textspeech = val.recognizedWords;
+                }));
+      }
+    }
+  }
+
   @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _speech = spee.SpeechToText();
+    onlistening();
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Color.fromARGB(255, 60, 59, 59),
         body: SafeArea(
           child: Stack(
             children: [
+              Container(
+                  margin: EdgeInsets.only(bottom: 120),
+                  child: Center(
+                      child: Text(
+                    textspeech,
+                    style: TextStyle(fontSize: 20, color: Colors.white),
+                  ))),
               Padding(
                 padding: const EdgeInsets.all(50),
                 child: Container(
-                  margin: EdgeInsets.only(top: 80),
+                  padding: EdgeInsets.all(80),
+                  margin: EdgeInsets.only(top: 355, left: 10),
                   child: Image.asset(
                     "assets/weeli.png",
                   ),
@@ -57,7 +98,34 @@ class _Home_pageState extends State<Home_page> {
                         ],
                       ),
                       SizedBox(
-                        height: 200,
+                        height: 10,
+                      ),
+                      Container(
+                        child: AvatarGlow(
+                          animate: true,
+                          glowColor: Colors.red,
+                          endRadius: 70,
+                          duration: Duration(milliseconds: 2000),
+                          repeatPauseDuration: Duration(milliseconds: 100),
+                          repeat: true,
+                          child: ElevatedButton(
+                              onPressed: () => onlistening(),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  padding: EdgeInsets.all(10),
+                                  minimumSize: Size(50, 80),
+                                  shape: CircleBorder(
+                                      side: BorderSide(
+                                          width: 2, color: Colors.redAccent))),
+                              child: Icon(
+                                Icons.mic,
+                                color: Colors.red,
+                                size: 40,
+                              )),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 100,
                       ),
                       Container(
                         margin: EdgeInsets.only(bottom: 50),
@@ -83,7 +151,6 @@ class _Home_pageState extends State<Home_page> {
                               children: [
                                 Container(
                                   child: ElevatedButton(
-                                      onHover: (value) => null,
                                       onPressed: () {
                                         print('moving left');
                                       },
