@@ -35,8 +35,8 @@ class _Home_pageState extends State<Home_page> {
         ">><<Iam in DANGER>><< \n Location:latitude:$lat,longitude:$long ";
 
     try {
-      final String result = await platform.invokeMethod(
-          'send', <String, dynamic>{"phone": "+919", "msg": messageContent});
+      final String result = await platform.invokeMethod('send',
+          <String, dynamic>{"phone": "+919544806485", "msg": messageContent});
       print(result);
     } on PlatformException catch (e) {
       print(e.toString());
@@ -56,31 +56,6 @@ class _Home_pageState extends State<Home_page> {
         locationMSG = 'latitude:$lat,longitude:$long';
       });
     });
-  }
-
-  void onlistening() async {
-    if (!islisten) {
-      var available = await _speech.initialize();
-      if (available) {
-        setState(() {
-          islisten = true;
-          _speech.listen(onResult: (result) {
-            setState(() {
-              textspeech = result.recognizedWords;
-            });
-          });
-        });
-      }
-    }
-  }
-
-  @override
-  void initState() {
-    _speech = spee.SpeechToText();
-
-    // TODO: implement initState
-    super.initState();
-    onlistening();
   }
 
   Widget build(BuildContext context) {
@@ -157,7 +132,7 @@ class _Home_pageState extends State<Home_page> {
                           repeatPauseDuration: Duration(milliseconds: 100),
                           repeat: true,
                           child: ElevatedButton(
-                              onPressed: onlistening,
+                              onPressed: () {},
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   padding: EdgeInsets.all(10),
