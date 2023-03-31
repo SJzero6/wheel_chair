@@ -1,34 +1,63 @@
-import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:speech_to_text/speech_to_text.dart' as spee;
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_sms/flutter_sms.dart';
 
-class Home_page extends StatefulWidget {
-  const Home_page({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<Home_page> createState() => _Home_pageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _Home_pageState extends State<Home_page> {
+class _HomePageState extends State<HomePage> {
   final platform = const MethodChannel('sendSms');
+
+  SpeechToText _speechToText = SpeechToText();
+  bool _speechEnabled = false;
+  String _lastWords = '';
+
+  // bool enable = true;
+
+  // bool islisten = false;
+
+  // String textspeech = "Speak ";
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    _speechEnabled = await _speechToText.initialize();
+    setState(() {});
+  }
+
+  void _startListening() async {
+    await _speechToText.listen(onResult: _onSpeechResult);
+    setState(() {});
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() {});
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    setState(() {
+      _lastWords = result.recognizedWords;
+    });
+  }
 
   late String lat;
   late String long;
 
-  late spee.SpeechToText _speech;
-
   var locationMSG = '';
-
-  bool enable = true;
-
-  bool islisten = false;
-
-  String textspeech = "Speak ";
 
   Future<Null> sendSms() async {
     String messageContent =
@@ -36,7 +65,7 @@ class _Home_pageState extends State<Home_page> {
 
     try {
       final String result = await platform.invokeMethod('send',
-          <String, dynamic>{"phone": "+919544806485", "msg": messageContent});
+          <String, dynamic>{"phone": "+918848737989", "msg": messageContent});
       print(result);
     } on PlatformException catch (e) {
       print(e.toString());
@@ -65,10 +94,14 @@ class _Home_pageState extends State<Home_page> {
           child: Stack(
             children: [
               Container(
-                  margin: EdgeInsets.only(bottom: 120),
+                  margin: EdgeInsets.only(bottom: 80),
                   child: Center(
                       child: Text(
-                    textspeech,
+                    _speechToText.isListening
+                        ? '$_lastWords'
+                        : _speechEnabled
+                            ? 'Speak'
+                            : 'Speech not available',
                     style: TextStyle(fontSize: 20, color: Colors.white),
                   ))),
               // Padding(
@@ -132,7 +165,9 @@ class _Home_pageState extends State<Home_page> {
                           repeatPauseDuration: Duration(milliseconds: 100),
                           repeat: true,
                           child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: _speechToText.isNotListening
+                                  ? _startListening
+                                  : _stopListening,
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   padding: EdgeInsets.all(10),
@@ -156,7 +191,6 @@ class _Home_pageState extends State<Home_page> {
                           children: [
                             Container(
                               child: ElevatedButton(
-                                  onHover: (value) => null,
                                   onPressed: () {
                                     print('moving forward');
                                   },
