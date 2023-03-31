@@ -1,8 +1,11 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:speech_to_text/speech_to_text.dart' as spee;
+import 'package:flutter_sms/flutter_sms.dart';
 
 class Home_page extends StatefulWidget {
   const Home_page({super.key});
@@ -12,36 +15,71 @@ class Home_page extends StatefulWidget {
 }
 
 class _Home_pageState extends State<Home_page> {
+  final platform = const MethodChannel('sendSms');
+
+  late String lat;
+  late String long;
+
   late spee.SpeechToText _speech;
+
+  var locationMSG = '';
 
   bool enable = true;
 
   bool islisten = false;
 
-  String textspeech = " speak";
+  String textspeech = "Speak ";
+
+  Future<Null> sendSms() async {
+    String messageContent =
+        ">><<Iam in DANGER>><< \n Location:latitude:$lat,longitude:$long ";
+
+    try {
+      final String result = await platform.invokeMethod(
+          'send', <String, dynamic>{"phone": "+919", "msg": messageContent});
+      print(result);
+    } on PlatformException catch (e) {
+      print(e.toString());
+    }
+  }
+
+  void _liveLoc() {
+    LocationSettings locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 100,
+    );
+    Geolocator.getPositionStream(locationSettings: locationSettings)
+        .listen((Position position) {
+      lat = position.latitude.toString();
+      long = position.longitude.toString();
+      setState(() {
+        locationMSG = 'latitude:$lat,longitude:$long';
+      });
+    });
+  }
 
   void onlistening() async {
     if (!islisten) {
-      bool available = await _speech.initialize(
-          onStatus: (val) => print("onstatus : $val"),
-          onError: (val) => print("onerror  : $val"));
+      var available = await _speech.initialize();
       if (available) {
         setState(() {
           islisten = true;
+          _speech.listen(onResult: (result) {
+            setState(() {
+              textspeech = result.recognizedWords;
+            });
+          });
         });
-        _speech.listen(
-            onResult: (val) => setState(() {
-                  textspeech = val.recognizedWords;
-                }));
       }
     }
   }
 
   @override
   void initState() {
+    _speech = spee.SpeechToText();
+
     // TODO: implement initState
     super.initState();
-    _speech = spee.SpeechToText();
     onlistening();
   }
 
@@ -58,16 +96,16 @@ class _Home_pageState extends State<Home_page> {
                     textspeech,
                     style: TextStyle(fontSize: 20, color: Colors.white),
                   ))),
-              Padding(
-                padding: const EdgeInsets.all(50),
-                child: Container(
-                  padding: EdgeInsets.all(80),
-                  margin: EdgeInsets.only(top: 355, left: 10),
-                  child: Image.asset(
-                    "assets/weeli.png",
-                  ),
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.all(50),
+              //   child: Container(
+              //     padding: EdgeInsets.all(80),
+              //     margin: EdgeInsets.only(top: 355, left: 10),
+              //     child: Image.asset(
+              //       "assets/weeli.png",
+              //     ),
+              //   ),
+              // ),
               Container(
                   height: MediaQuery.of(context).size.height,
                   width: MediaQuery.of(context).size.width,
@@ -84,12 +122,22 @@ class _Home_pageState extends State<Home_page> {
                                     asset:
                                         'assets/warning-icon-transparent-free-png.webp',
                                     onTap: () {
-                                      print('Alert');
+                                      sendSms();
+                                      print('Alert ');
                                     }),
                                 _cardmenu(
                                     title: 'SPO2',
                                     asset: 'assets/spo2.png',
                                     onTap: () {
+                                      _getcurrentLocation().then((value) {
+                                        lat = '${value.latitude}';
+                                        long = '${value.longitude}';
+                                        setState(() {
+                                          locationMSG =
+                                              'latitude:$lat, longitude:$long';
+                                        });
+                                        _liveLoc();
+                                      });
                                       print('O2 rate');
                                     },
                                     color: Color.fromARGB(255, 234, 83, 72),
@@ -109,7 +157,7 @@ class _Home_pageState extends State<Home_page> {
                           repeatPauseDuration: Duration(milliseconds: 100),
                           repeat: true,
                           child: ElevatedButton(
-                              onPressed: () => onlistening(),
+                              onPressed: onlistening,
                               style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   padding: EdgeInsets.all(10),
@@ -125,7 +173,7 @@ class _Home_pageState extends State<Home_page> {
                         ),
                       ),
                       SizedBox(
-                        height: 100,
+                        height: 20,
                       ),
                       Container(
                         margin: EdgeInsets.only(bottom: 50),
@@ -186,7 +234,6 @@ class _Home_pageState extends State<Home_page> {
                             ),
                             Container(
                               child: ElevatedButton(
-                                  onHover: (value) => null,
                                   onPressed: () {
                                     print('reverce');
                                   },
@@ -207,6 +254,24 @@ class _Home_pageState extends State<Home_page> {
             ],
           ),
         ));
+  }
+
+  Future<Position> _getcurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error("location service is not enabled");
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error("location permission is denied");
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error("location permission is PERMENENTLY DENIED ");
+    }
+    return await Geolocator.getCurrentPosition();
   }
 
   Widget _cardmenu(
