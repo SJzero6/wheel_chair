@@ -1,7 +1,10 @@
 import 'package:wheel_chair/home.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Permission.microphone.request();
   runApp(const MyApp());
 }
 

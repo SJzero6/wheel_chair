@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_sms/flutter_sms.dart';
@@ -21,16 +23,25 @@ class _HomePageState extends State<HomePage> {
   bool _speechEnabled = false;
   String _lastWords = '';
 
-  // bool enable = true;
+  static const url = "alq5vzvrt1h0b-ats.iot.ap-northeast-1.amazonaws.com";
 
-  // bool islisten = false;
+  static const port = 8883;
 
-  // String textspeech = "Speak ";
+  static const clientId = 'WheelC';
+
+  final client = MqttServerClient.withPort(url, clientId, port);
 
   @override
   void initState() {
     super.initState();
+
+    _connectMqtt();
+
     _initSpeech();
+  }
+
+  _connectMqtt() {
+    newAWSConnect();
   }
 
   void _initSpeech() async {
@@ -263,6 +274,65 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ));
+  }
+
+  newAWSConnect() async {
+    client.secure = true;
+
+    client.keepAlivePeriod = 20;
+
+    client.setProtocolV311();
+
+    client.logging(on: true);
+
+    final context = SecurityContext.defaultContext;
+
+    ByteData dev_cert = await rootBundle.load(
+        'assets/certi/88f78bb72a173ed5c23cfb3b8f4afa9f96c8308612faa8d4fe7805bc253dd18b-certificate.pem.crt');
+    context.useCertificateChainBytes(dev_cert.buffer.asUint8List());
+
+    ByteData authorities =
+        await rootBundle.load('assets/certi/AmazonRootCA3.pem');
+    context.setClientAuthoritiesBytes(authorities.buffer.asUint8List());
+
+    ByteData keybyte = await rootBundle.load(
+        'assets/certi/88f78bb72a173ed5c23cfb3b8f4afa9f96c8308612faa8d4fe7805bc253dd18b-private.pem.key');
+    context.usePrivateKeyBytes(keybyte.buffer.asUint8List());
+    client.securityContext = context;
+
+    final msg =
+        MqttConnectMessage().withClientIdentifier('$clientId').startClean();
+    client.connectionMessage = msg;
+    try {
+      print('MQTT client is connecting to AWS');
+      await client.connect();
+    } on Exception catch (e) {
+      print('MQTT client exception - $e');
+      client.disconnect();
+    }
+    if (client.connectionStatus!.state == MqttConnectionState.connected) {
+      print('AWS iot connection succesfully done');
+
+      const topic = 'esp32/cam_2';
+      final maker = MqttClientPayloadBuilder();
+      maker.addString('mommu');
+
+      client.publishMessage(topic, MqttQos.atMostOnce, maker.payload!);
+
+      client.subscribe(topic, MqttQos.atMostOnce);
+      client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+        final rcvmsg = c[0].payload as MqttPublishMessage;
+        final pt =
+            MqttPublishPayload.bytesToStringAsString(rcvmsg.payload.message);
+        print(
+            'Example::Change notification:: topic is<${c[0].topic}>, payload is <--$pt-->');
+      });
+    } else {
+      print(
+          'ERROR MQTT client connection failed - disconnecting, state is ${client.connectionStatus!.state}');
+      client.disconnect();
+    }
+    return 0;
   }
 
   Future<Position> _getcurrentLocation() async {
