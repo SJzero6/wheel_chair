@@ -19,11 +19,17 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final platform = const MethodChannel('sendSms');
 
+  var forwardvoice = ["Move forward", "Forward", "go forward"];
+  var leftvoice = ["Move left", "left", "go left", "turn left"];
+  var rightvoice = ["Move left", "left", "go left", "turn left"];
+  var backwardvoice = ["Move left", "left", "go left", "turn left"];
+  var stopvoice = ["stop"];
+
   SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   String _lastWords = '';
 
-  static const url = "alq5vzvrt1h0b-ats.iot.ap-northeast-1.amazonaws.com";
+  static const url = "a3ic1k7itt4ynl-ats.iot.ap-northeast-1.amazonaws.com";
 
   static const port = 8883;
 
@@ -63,6 +69,10 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _lastWords = result.recognizedWords;
     });
+
+    if (forwardvoice.contains(_lastWords.toLowerCase())) {
+      Forward();
+    }
   }
 
   late String lat;
@@ -208,7 +218,7 @@ class _HomePageState extends State<HomePage> {
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       padding: EdgeInsets.all(15),
-                                      minimumSize: Size(150, 80),
+                                      minimumSize: Size(100, 80),
                                       shape: CircleBorder(
                                           side: BorderSide(
                                               width: 5, color: Colors.black))),
@@ -220,12 +230,13 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   child: ElevatedButton(
                                       onPressed: () {
+                                        Left();
                                         print('moving left');
                                       },
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
                                           padding: EdgeInsets.all(15),
-                                          minimumSize: Size(150, 80),
+                                          minimumSize: Size(100, 80),
                                           shape: CircleBorder(
                                               side: BorderSide(
                                                   width: 5,
@@ -235,14 +246,33 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 Container(
                                   child: ElevatedButton(
+                                      onPressed: () {
+                                        print('Stop');
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          padding: EdgeInsets.all(15),
+                                          minimumSize: Size(70, 80),
+                                          shape: CircleBorder(
+                                              side: BorderSide(
+                                                  width: 5,
+                                                  color: Colors.black))),
+                                      child: Icon(
+                                        Icons.stop_circle,
+                                        color: Colors.red,
+                                      )),
+                                ),
+                                Container(
+                                  child: ElevatedButton(
                                       onHover: (value) => null,
                                       onPressed: () {
+                                        Right();
                                         print("moving right");
                                       },
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
                                           padding: EdgeInsets.all(15),
-                                          minimumSize: Size(150, 80),
+                                          minimumSize: Size(100, 80),
                                           shape: CircleBorder(
                                               side: BorderSide(
                                                   width: 5,
@@ -255,12 +285,13 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               child: ElevatedButton(
                                   onPressed: () {
+                                    Backward();
                                     print('reverce');
                                   },
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       padding: EdgeInsets.all(15),
-                                      minimumSize: Size(150, 80),
+                                      minimumSize: Size(100, 80),
                                       shape: CircleBorder(
                                           side: BorderSide(
                                               width: 5, color: Colors.black))),
@@ -313,9 +344,9 @@ class _HomePageState extends State<HomePage> {
     if (client.connectionStatus!.state == MqttConnectionState.connected) {
       print('AWS iot connection succesfully done');
 
-      const topic = 'esp32/cam_2';
+      const topic = 'WheelC/pub';
       final maker = MqttClientPayloadBuilder();
-      maker.addString('mommu');
+      maker.addString('jermi');
 
       client.publishMessage(topic, MqttQos.atMostOnce, maker.payload!);
 
@@ -385,5 +416,40 @@ class _HomePageState extends State<HomePage> {
         ]),
       ),
     );
+  }
+
+  void Left() {
+    const topic = 'WheelC/sub';
+    final make = MqttClientPayloadBuilder();
+    make.addString('L');
+    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  }
+
+  void Right() {
+    const topic = 'WheelC/sub';
+    final make = MqttClientPayloadBuilder();
+    make.addString('R');
+    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  }
+
+  void Forward() {
+    const topic = 'WheelC/sub';
+    final make = MqttClientPayloadBuilder();
+    make.addString('F');
+    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  }
+
+  void Backward() {
+    const topic = 'WheelC/sub';
+    final make = MqttClientPayloadBuilder();
+    make.addString('B');
+    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  }
+
+  void stop() {
+    const topic = 'WheelC/sub';
+    final make = MqttClientPayloadBuilder();
+    make.addString('s');
+    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
   }
 }
