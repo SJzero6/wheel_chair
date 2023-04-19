@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:avatar_glow/avatar_glow.dart';
@@ -37,6 +38,9 @@ class _HomePageState extends State<HomePage> {
 
   final client = MqttServerClient.withPort(url, clientId, port);
 
+  String o2 = '-';
+  String temp = "-";
+
   @override
   void initState() {
     super.initState();
@@ -69,10 +73,6 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _lastWords = result.recognizedWords;
     });
-
-    if (forwardvoice.contains(_lastWords.toLowerCase())) {
-      Forward();
-    }
   }
 
   late String lat;
@@ -147,16 +147,14 @@ class _HomePageState extends State<HomePage> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _cardmenu(
-                                    title: 'ALERT',
-                                    asset:
-                                        'assets/warning-icon-transparent-free-png.webp',
+                                    title: 'Temprature\n$temp',
+                                    asset: 'assets/images/1090683.png',
                                     onTap: () {
-                                      sendSms();
-                                      print('Alert ');
+                                      print('Temprature');
                                     }),
                                 _cardmenu(
-                                    title: 'SPO2',
-                                    asset: 'assets/spo2.png',
+                                    title: 'SPO2\n$o2',
+                                    asset: 'assets/images/spo2.png',
                                     onTap: () {
                                       _getcurrentLocation().then((value) {
                                         lat = '${value.latitude}';
@@ -177,31 +175,48 @@ class _HomePageState extends State<HomePage> {
                       SizedBox(
                         height: 10,
                       ),
-                      Container(
-                        child: AvatarGlow(
-                          animate: true,
-                          glowColor: Colors.red,
-                          endRadius: 70,
-                          duration: Duration(milliseconds: 2000),
-                          repeatPauseDuration: Duration(milliseconds: 100),
-                          repeat: true,
-                          child: ElevatedButton(
-                              onPressed: _speechToText.isNotListening
-                                  ? _startListening
-                                  : _stopListening,
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  padding: EdgeInsets.all(10),
-                                  minimumSize: Size(50, 80),
-                                  shape: CircleBorder(
-                                      side: BorderSide(
-                                          width: 2, color: Colors.redAccent))),
-                              child: Icon(
-                                Icons.mic,
-                                color: Colors.red,
-                                size: 40,
-                              )),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Container(
+                            child: ElevatedButton(
+                                onPressed: _speechToText.isNotListening
+                                    ? _startListening
+                                    : _stopListening,
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    padding: EdgeInsets.all(10),
+                                    minimumSize: Size(50, 80),
+                                    shape: CircleBorder(
+                                        side: BorderSide(
+                                            width: 2,
+                                            color: Colors.redAccent))),
+                                child: Icon(
+                                  Icons.mic,
+                                  color: Colors.red,
+                                  size: 40,
+                                )),
+                          ),
+                          Container(
+                            child: ElevatedButton(
+                                onPressed: () {
+                                  sendSms();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    padding: EdgeInsets.all(10),
+                                    minimumSize: Size(50, 80),
+                                    shape: CircleBorder(
+                                        side: BorderSide(
+                                            width: 2,
+                                            color: Colors.redAccent))),
+                                child: Icon(
+                                  Icons.crisis_alert,
+                                  color: Colors.red,
+                                  size: 40,
+                                )),
+                          ),
+                        ],
                       ),
                       SizedBox(
                         height: 20,
@@ -213,16 +228,18 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               child: ElevatedButton(
                                   onPressed: () {
+                                    Forward();
                                     print('moving forward');
                                   },
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       padding: EdgeInsets.all(15),
-                                      minimumSize: Size(100, 80),
+                                      minimumSize: Size(90, 50),
                                       shape: CircleBorder(
                                           side: BorderSide(
                                               width: 5, color: Colors.black))),
-                                  child: Image.asset('assets/up arrow.png')),
+                                  child: Image.asset(
+                                      'assets/images/up arrow.png')),
                             ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -236,23 +253,24 @@ class _HomePageState extends State<HomePage> {
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
                                           padding: EdgeInsets.all(15),
-                                          minimumSize: Size(100, 80),
+                                          minimumSize: Size(90, 50),
                                           shape: CircleBorder(
                                               side: BorderSide(
                                                   width: 5,
                                                   color: Colors.black))),
-                                      child:
-                                          Image.asset('assets/arrow-left.png')),
+                                      child: Image.asset(
+                                          'assets/images/arrow-left.png')),
                                 ),
                                 Container(
                                   child: ElevatedButton(
                                       onPressed: () {
+                                        stop();
                                         print('Stop');
                                       },
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
                                           padding: EdgeInsets.all(15),
-                                          minimumSize: Size(70, 80),
+                                          minimumSize: Size(80, 70),
                                           shape: CircleBorder(
                                               side: BorderSide(
                                                   width: 5,
@@ -260,6 +278,7 @@ class _HomePageState extends State<HomePage> {
                                       child: Icon(
                                         Icons.stop_circle,
                                         color: Colors.red,
+                                        size: 40,
                                       )),
                                 ),
                                 Container(
@@ -272,13 +291,13 @@ class _HomePageState extends State<HomePage> {
                                       style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
                                           padding: EdgeInsets.all(15),
-                                          minimumSize: Size(100, 80),
+                                          minimumSize: Size(90, 50),
                                           shape: CircleBorder(
                                               side: BorderSide(
                                                   width: 5,
                                                   color: Colors.black))),
                                       child: Image.asset(
-                                          'assets/right arrow.png')),
+                                          'assets/images/right arrow.png')),
                                 ),
                               ],
                             ),
@@ -291,11 +310,12 @@ class _HomePageState extends State<HomePage> {
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       padding: EdgeInsets.all(15),
-                                      minimumSize: Size(100, 80),
+                                      minimumSize: Size(90, 50),
                                       shape: CircleBorder(
                                           side: BorderSide(
                                               width: 5, color: Colors.black))),
-                                  child: Image.asset('assets/down arrow.png')),
+                                  child: Image.asset(
+                                      'assets/images/down arrow.png')),
                             ),
                           ],
                         ),
@@ -344,10 +364,9 @@ class _HomePageState extends State<HomePage> {
     if (client.connectionStatus!.state == MqttConnectionState.connected) {
       print('AWS iot connection succesfully done');
 
-      const topic = 'WheelC/pub';
+      const topic = 'Underground/pub';
       final maker = MqttClientPayloadBuilder();
-      maker.addString('jermi');
-
+      // maker.addString('jermi');
       client.publishMessage(topic, MqttQos.atMostOnce, maker.payload!);
 
       client.subscribe(topic, MqttQos.atMostOnce);
@@ -357,6 +376,14 @@ class _HomePageState extends State<HomePage> {
             MqttPublishPayload.bytesToStringAsString(rcvmsg.payload.message);
         print(
             'Example::Change notification:: topic is<${c[0].topic}>, payload is <--$pt-->');
+
+        var payloadJson = json.decode(pt);
+
+        setState(() {
+          o2 = "${payloadJson["SPO2"]}";
+          temp = "${payloadJson["TEMP"]}";
+          // print('kozhikallan');
+        });
       });
     } else {
       print(
@@ -393,14 +420,14 @@ class _HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 36),
+        padding: EdgeInsets.symmetric(vertical: 30),
         width: 156,
         decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24), color: color),
         child: Column(children: [
           Container(
             height: 60,
-            width: 60,
+            width: 70,
             child: Image.asset(
               asset,
             ),
