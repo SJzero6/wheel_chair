@@ -1,6 +1,8 @@
-import 'package:wheel_chair/home.dart';
+import 'package:wheel_chair/screens/home.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:wheel_chair/provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,8 +15,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: HomePage(),
-    );
+    return MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => Mqttprovider())
+        ],
+        child: MaterialApp(
+          home: HomePage(),
+        ));
   }
 }

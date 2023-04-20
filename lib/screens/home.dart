@@ -9,6 +9,9 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_sms/flutter_sms.dart';
+import 'package:provider/provider.dart';
+import 'package:wheel_chair/constant/setting_data.dart';
+import 'package:wheel_chair/provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,28 +33,19 @@ class _HomePageState extends State<HomePage> {
   bool _speechEnabled = false;
   String _lastWords = '';
 
-  static const url = "a3ic1k7itt4ynl-ats.iot.ap-northeast-1.amazonaws.com";
+  var o2 = 0;
+  var temp = 0;
 
-  static const port = 8883;
-
-  static const clientId = 'WheelC';
-
-  final client = MqttServerClient.withPort(url, clientId, port);
-
-  String o2 = '-';
-  String temp = "-";
+  DetectionStatus detection = DetectionStatus.noDetection;
 
   @override
   void initState() {
+    Mqttprovider mqttProvider =
+        Provider.of<Mqttprovider>(context, listen: false);
+    mqttProvider.newAWSConnect();
     super.initState();
-
-    _connectMqtt();
-
     _initSpeech();
-  }
-
-  _connectMqtt() {
-    newAWSConnect();
+    _startListening();
   }
 
   void _initSpeech() async {
@@ -60,6 +54,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _startListening() async {
+    detection = DetectionStatus.noDetection;
+    print('voice detection');
     await _speechToText.listen(onResult: _onSpeechResult);
     setState(() {});
   }
@@ -70,6 +66,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {
+    Mqttprovider mqttprovider = Provider.of(context, listen: false);
     setState(() {
       _lastWords = result.recognizedWords;
     });
@@ -109,6 +106,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget build(BuildContext context) {
+    Mqttprovider mqttProvider = Provider.of<Mqttprovider>(context);
+
+    Map<String, dynamic> log = json.decode(mqttProvider.rawLogData);
+
+    o2 = log["SPO2"] ?? -1;
+    temp = log["Temp"] ?? 0;
+
     return Scaffold(
         backgroundColor: Color.fromARGB(255, 60, 59, 59),
         body: SafeArea(
@@ -228,7 +232,7 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               child: ElevatedButton(
                                   onPressed: () {
-                                    Forward();
+                                    //Forward();
                                     print('moving forward');
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -247,7 +251,7 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   child: ElevatedButton(
                                       onPressed: () {
-                                        Left();
+                                        //Left();
                                         print('moving left');
                                       },
                                       style: ElevatedButton.styleFrom(
@@ -264,7 +268,7 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   child: ElevatedButton(
                                       onPressed: () {
-                                        stop();
+                                        //stop();
                                         print('Stop');
                                       },
                                       style: ElevatedButton.styleFrom(
@@ -285,7 +289,7 @@ class _HomePageState extends State<HomePage> {
                                   child: ElevatedButton(
                                       onHover: (value) => null,
                                       onPressed: () {
-                                        Right();
+                                        //Right();
                                         print("moving right");
                                       },
                                       style: ElevatedButton.styleFrom(
@@ -304,7 +308,7 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               child: ElevatedButton(
                                   onPressed: () {
-                                    Backward();
+                                    //Backward();
                                     print('reverce');
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -325,72 +329,6 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ));
-  }
-
-  newAWSConnect() async {
-    client.secure = true;
-
-    client.keepAlivePeriod = 20;
-
-    client.setProtocolV311();
-
-    client.logging(on: true);
-
-    final context = SecurityContext.defaultContext;
-
-    ByteData dev_cert = await rootBundle.load(
-        'assets/certi/88f78bb72a173ed5c23cfb3b8f4afa9f96c8308612faa8d4fe7805bc253dd18b-certificate.pem.crt');
-    context.useCertificateChainBytes(dev_cert.buffer.asUint8List());
-
-    ByteData authorities =
-        await rootBundle.load('assets/certi/AmazonRootCA3.pem');
-    context.setClientAuthoritiesBytes(authorities.buffer.asUint8List());
-
-    ByteData keybyte = await rootBundle.load(
-        'assets/certi/88f78bb72a173ed5c23cfb3b8f4afa9f96c8308612faa8d4fe7805bc253dd18b-private.pem.key');
-    context.usePrivateKeyBytes(keybyte.buffer.asUint8List());
-    client.securityContext = context;
-
-    final msg =
-        MqttConnectMessage().withClientIdentifier('$clientId').startClean();
-    client.connectionMessage = msg;
-    try {
-      print('MQTT client is connecting to AWS');
-      await client.connect();
-    } on Exception catch (e) {
-      print('MQTT client exception - $e');
-      client.disconnect();
-    }
-    if (client.connectionStatus!.state == MqttConnectionState.connected) {
-      print('AWS iot connection succesfully done');
-
-      const topic = 'Underground/pub';
-      final maker = MqttClientPayloadBuilder();
-      // maker.addString('jermi');
-      client.publishMessage(topic, MqttQos.atMostOnce, maker.payload!);
-
-      client.subscribe(topic, MqttQos.atMostOnce);
-      client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
-        final rcvmsg = c[0].payload as MqttPublishMessage;
-        final pt =
-            MqttPublishPayload.bytesToStringAsString(rcvmsg.payload.message);
-        print(
-            'Example::Change notification:: topic is<${c[0].topic}>, payload is <--$pt-->');
-
-        var payloadJson = json.decode(pt);
-
-        setState(() {
-          o2 = "${payloadJson["SPO2"]}";
-          temp = "${payloadJson["TEMP"]}";
-          // print('kozhikallan');
-        });
-      });
-    } else {
-      print(
-          'ERROR MQTT client connection failed - disconnecting, state is ${client.connectionStatus!.state}');
-      client.disconnect();
-    }
-    return 0;
   }
 
   Future<Position> _getcurrentLocation() async {
@@ -445,38 +383,38 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void Left() {
-    const topic = 'WheelC/sub';
-    final make = MqttClientPayloadBuilder();
-    make.addString('L');
-    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
-  }
+  // void Left() {
+  //   const topic = 'WheelC/sub';
+  //   final make = MqttClientPayloadBuilder();
+  //   make.addString('L');
+  //   client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  // }
 
-  void Right() {
-    const topic = 'WheelC/sub';
-    final make = MqttClientPayloadBuilder();
-    make.addString('R');
-    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
-  }
+  // void Right() {
+  //   const topic = 'WheelC/sub';
+  //   final make = MqttClientPayloadBuilder();
+  //   make.addString('R');
+  //   client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  // }
 
-  void Forward() {
-    const topic = 'WheelC/sub';
-    final make = MqttClientPayloadBuilder();
-    make.addString('F');
-    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
-  }
+  // void Forward() {
+  //   const topic = 'WheelC/sub';
+  //   final make = MqttClientPayloadBuilder();
+  //   make.addString('F');
+  //   client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  // }
 
-  void Backward() {
-    const topic = 'WheelC/sub';
-    final make = MqttClientPayloadBuilder();
-    make.addString('B');
-    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
-  }
+  // void Backward() {
+  //   const topic = 'WheelC/sub';
+  //   final make = MqttClientPayloadBuilder();
+  //   make.addString('B');
+  //   client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  // }
 
-  void stop() {
-    const topic = 'WheelC/sub';
-    final make = MqttClientPayloadBuilder();
-    make.addString('s');
-    client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
-  }
+  // void stop() {
+  //   const topic = 'WheelC/sub';
+  //   final make = MqttClientPayloadBuilder();
+  //   make.addString('s');
+  //   client.publishMessage(topic, MqttQos.atLeastOnce, make.payload!);
+  // }
 }
